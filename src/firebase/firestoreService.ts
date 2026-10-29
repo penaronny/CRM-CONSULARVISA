@@ -87,26 +87,34 @@ function notifyListeners() {
 export function initializeDatabase() {
   const existingUsers = getLocalItem<User[]>(STORAGE_KEYS.USERS, SEED_USERS);
   
-  // Asegurar que usuarios existentes en localStorage tengan contraseña de portal y se sincronicen nuevos administradores
-  const existingMap = new Map(existingUsers.map(u => [u.email.toLowerCase(), u]));
+  // REGLA ESTRICTA: El único usuario administrador permitido en el sistema es law@ronnypena.com.do
+  // Filtramos y eliminamos cualquier otro usuario con rol 'admin'
+  const nonAdminClients = existingUsers.filter(u => u.role !== 'admin');
 
-  // Agregar o actualizar usuarios semilla (garantiza que nuevos administradores existan de inmediato)
-  SEED_USERS.forEach(su => {
-    const existing = existingMap.get(su.email.toLowerCase());
-    if (existing) {
-      existingMap.set(su.email.toLowerCase(), {
-        ...existing,
-        name: su.name || existing.name,
-        role: su.role,
-        portal_password: su.portal_password || existing.portal_password || 'Consular2025*Pass'
-      });
-    } else {
-      existingMap.set(su.email.toLowerCase(), su);
-    }
-  });
+  // Buscar si ya existía law@ronnypena.com.do para preservar datos modificados (avatar, teléfono)
+  const existingRonny = existingUsers.find(u => u.email.toLowerCase() === 'law@ronnypena.com.do');
 
-  const syncedUsers = Array.from(existingMap.values());
-  setLocalItem(STORAGE_KEYS.USERS, syncedUsers);
+  const ronnyAdmin: User = {
+    id: existingRonny?.id || 'admin-ronny',
+    name: 'Lic. Ronny Peña | ConsularVisa',
+    role: 'admin',
+    email: 'law@ronnypena.com.do',
+    portal_password: 'Escaflowne@23@',
+    phone: existingRonny?.phone || '+1 (809) 555-0100',
+    total_cost: 0,
+    amount_paid: 0,
+    avatar_url: existingRonny?.avatar_url || 'https://images.unsplash.com/photo-1556157382-97eda2d62296?w=160&auto=format&fit=crop&q=80',
+    created_at: existingRonny?.created_at || '2024-01-01T08:00:00Z'
+  };
+
+  // Sincronizar clientes asegurando que tengan contraseña
+  const syncedClients = nonAdminClients.map(c => ({
+    ...c,
+    portal_password: c.portal_password || 'Consular2025*Pass'
+  }));
+
+  const cleanedUsers = [ronnyAdmin, ...syncedClients];
+  setLocalItem(STORAGE_KEYS.USERS, cleanedUsers);
 
   getLocalItem(STORAGE_KEYS.CASES, SEED_CASES);
   getLocalItem(STORAGE_KEYS.FILES, SEED_FILES);
@@ -391,6 +399,7 @@ export async function deleteAppointment(aptId: string): Promise<void> {
 // 5. MENSAJES Y CHAT (MESSAGES)
 // ---------------------------------------------------------------------------
 export async function getMessages(clientId: string): Promise<Message[]> {
+  const targetClientId = String(clientId || '').trim();
   let messages: Message[] = [];
   if (isLiveFirebaseConfigured && db) {
     try {
@@ -405,14 +414,16 @@ export async function getMessages(clientId: string): Promise<Message[]> {
   }
 
   return messages
-    .filter(m => m.client_id === clientId)
+    .filter(m => String(m.client_id || '').trim() === targetClientId)
     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 }
 
 export async function sendMessage(messageData: Omit<Message, 'id' | 'timestamp'>): Promise<Message> {
-  const newId = `msg-${Date.now()}`;
+  const cleanClientId = String(messageData.client_id || '').trim();
+  const newId = `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
   const newMsg: Message = {
     ...messageData,
+    client_id: cleanClientId,
     id: newId,
     timestamp: new Date().toISOString()
   };

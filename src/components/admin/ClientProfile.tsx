@@ -8,7 +8,7 @@
  * 5. Chat interno bidireccional con el cliente
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { User, Case, FileItem, Appointment, Message } from '../../types';
 import { StatusBadge } from '../common/StatusBadge';
@@ -24,7 +24,8 @@ import {
   deleteAppointment,
   getMessages, 
   sendMessage, 
-  updateCase 
+  updateCase,
+  subscribeToChanges
 } from '../../firebase/firestoreService';
 import { 
   ArrowLeft, 
@@ -94,6 +95,7 @@ export const ClientProfile: React.FC<ClientProfileProps> = ({ clientId, onBack }
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMsgText, setNewMsgText] = useState('');
   const [isSendingMsg, setIsSendingMsg] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Notas internas
   const [internalNotes, setInternalNotes] = useState(clientCase?.internal_notes || '');
@@ -119,6 +121,28 @@ export const ClientProfile: React.FC<ClientProfileProps> = ({ clientId, onBack }
   useEffect(() => {
     loadClientDetails();
   }, [loadClientDetails]);
+
+  // Sincronización reactiva del chat y datos
+  useEffect(() => {
+    const unsub = subscribeToChanges(() => {
+      loadClientDetails();
+    });
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'consularvisa_messages_v1') {
+        loadClientDetails();
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => {
+      unsub();
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, [loadClientDetails]);
+
+  // Auto-scroll al último mensaje
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   // Actualizar estados locales cuando cambie el cliente
   useEffect(() => {
@@ -267,16 +291,20 @@ export const ClientProfile: React.FC<ClientProfileProps> = ({ clientId, onBack }
   // Enviar mensaje en chat
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMsgText.trim() || isSendingMsg) return;
+    const cleanText = newMsgText.trim();
+    if (!cleanText || isSendingMsg) return;
 
     setIsSendingMsg(true);
     try {
       const msg = await sendMessage({
-        client_id: client.id,
+        client_id: clientId,
         sender: 'admin',
-        text: newMsgText.trim()
+        text: cleanText
       });
-      setMessages(prev => [...prev, msg]);
+      setMessages(prev => {
+        if (prev.some(m => m.id === msg.id)) return prev;
+        return [...prev, msg];
+      });
       setNewMsgText('');
     } catch (err) {
       console.error(err);
@@ -755,7 +783,7 @@ export const ClientProfile: React.FC<ClientProfileProps> = ({ clientId, onBack }
                     </td>
                     <td className="py-3 px-3">
                       <span className={`text-[11px] font-medium ${file.uploaded_by === 'admin' ? 'text-blue-700' : 'text-emerald-700'}`}>
-                        {file.uploaded_by === 'admin' ? 'Abogado / Firma' : 'Cliente'}
+                        {file.uploaded_by === 'admin' ? 'Lic. Ronny Peña | ConsularVisa' : 'Cliente'}
                       </span>
                     </td>
                     <td className="py-3 px-3 text-slate-500 text-[11px]">
@@ -864,7 +892,7 @@ export const ClientProfile: React.FC<ClientProfileProps> = ({ clientId, onBack }
                   onChange={(e) => setAptType(e.target.value as any)}
                   className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
-                  <option value="Consulta Legal">Consulta Legal con Abogado</option>
+                  <option value="Consulta Legal">Consulta Legal con Lic. Ronny Peña | ConsularVisa</option>
                   <option value="Toma de Huellas (ASC)">Toma de Huellas / Biometría (ASC)</option>
                   <option value="Entrevista Consular">Entrevista Consular / Embajada</option>
                   <option value="Revisión Documental">Revisión Documental Final</option>
@@ -988,15 +1016,16 @@ export const ClientProfile: React.FC<ClientProfileProps> = ({ clientId, onBack }
                     <div
                       className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 shadow-2xs ${isAdmin ? 'bg-slate-900 text-white rounded-br-xs' : 'bg-slate-100 text-slate-800 rounded-bl-xs'}`}
                     >
-                      <p className="leading-relaxed">{msg.text}</p>
+                      <p className="leading-relaxed whitespace-pre-wrap">{msg.text}</p>
                     </div>
                     <span className="text-[10px] text-slate-400 mt-1 px-1">
-                      {isAdmin ? 'Abogado' : client.name.split(' ')[0]} • {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {isAdmin ? 'Lic. Ronny Peña | ConsularVisa' : (client?.name ? client.name.split(' ')[0] : 'Cliente')} • {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
                 );
               })
             )}
+            <div ref={messagesEndRef} />
           </div>
 
           {/* Entrada de Nuevo Mensaje */}
@@ -1027,7 +1056,7 @@ export const ClientProfile: React.FC<ClientProfileProps> = ({ clientId, onBack }
             <div className="flex items-center gap-2">
               <ShieldAlert className="w-4 h-4 text-amber-600" />
               <h3 className="text-sm font-bold text-slate-900">
-                Anotaciones Legales Internas (Solo Abogados - Nunca visibles al cliente)
+                Anotaciones Legales Internas (Lic. Ronny Peña | ConsularVisa - Confidencial)
               </h3>
             </div>
             <button

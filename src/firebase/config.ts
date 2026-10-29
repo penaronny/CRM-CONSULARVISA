@@ -32,21 +32,23 @@ import { getFirestore, Firestore } from 'firebase/firestore';
 import { getAuth, Auth } from 'firebase/auth';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 
-// Configuración leída de variables de entorno de Vite
+// Configuración leída de variables de entorno de Vite o fallback seguro
+const env = (typeof import.meta !== 'undefined' && import.meta.env) ? import.meta.env : (process.env as any || {});
+
 export const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'demo-consularvisa-key',
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'consularvisa-crm.firebaseapp.com',
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'consularvisa-crm',
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'consularvisa-crm.appspot.com',
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '999123456789',
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:999123456789:web:a1b2c3d4e5f6g7h8'
+  apiKey: env.VITE_FIREBASE_API_KEY || 'demo-consularvisa-key',
+  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || 'consularvisa-crm.firebaseapp.com',
+  projectId: env.VITE_FIREBASE_PROJECT_ID || 'consularvisa-crm',
+  storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || 'consularvisa-crm.appspot.com',
+  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || '999123456789',
+  appId: env.VITE_FIREBASE_APP_ID || '1:999123456789:web:a1b2c3d4e5f6g7h8'
 };
 
 // Determina si las credenciales son de un proyecto real configurado
 export const isLiveFirebaseConfigured: boolean = Boolean(
-  import.meta.env.VITE_FIREBASE_API_KEY &&
-  import.meta.env.VITE_FIREBASE_PROJECT_ID &&
-  !import.meta.env.VITE_FIREBASE_API_KEY.includes('demo-')
+  env.VITE_FIREBASE_API_KEY &&
+  env.VITE_FIREBASE_PROJECT_ID &&
+  !String(env.VITE_FIREBASE_API_KEY).includes('demo-')
 );
 
 // Inicialización de la aplicación Firebase

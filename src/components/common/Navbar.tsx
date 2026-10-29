@@ -103,7 +103,7 @@ export const Navbar: React.FC = () => {
                     <div className="flex items-center gap-1 mt-0.5">
                       <ShieldCheck className="w-3 h-3 text-amber-400" />
                       <span className="text-[10px] text-amber-300 font-medium tracking-wide">
-                        Abogado
+                        Lic. Ronny Peña | ConsularVisa
                       </span>
                       <span className="text-[10px] text-slate-400 ml-1 group-hover:text-amber-300">
                         • Editar

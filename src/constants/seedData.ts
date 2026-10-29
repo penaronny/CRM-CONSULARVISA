@@ -8,7 +8,7 @@ import { User, Case, FileItem, Appointment, Message } from '../types';
 export const SEED_USERS: User[] = [
   {
     id: 'admin-ronny',
-    name: 'Lic. Ronny Peña (Abogado Director)',
+    name: 'Lic. Ronny Peña | ConsularVisa',
     role: 'admin',
     email: 'law@ronnypena.com.do',
     portal_password: 'Escaflowne@23@',
@@ -17,18 +17,6 @@ export const SEED_USERS: User[] = [
     amount_paid: 0,
     avatar_url: 'https://images.unsplash.com/photo-1556157382-97eda2d62296?w=160&auto=format&fit=crop&q=80',
     created_at: '2024-01-01T08:00:00Z'
-  },
-  {
-    id: 'admin-1',
-    name: 'Lic. Roberto Valdez (Abogado Principal)',
-    role: 'admin',
-    email: 'abogado@consularvisa.com',
-    portal_password: 'Abogado2025*Admin',
-    phone: '+1 (305) 555-0199',
-    total_cost: 0,
-    amount_paid: 0,
-    avatar_url: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=160&auto=format&fit=crop&q=80',
-    created_at: '2024-01-10T08:00:00Z'
   },
   {
     id: 'client-1',
@@ -311,7 +299,7 @@ export const SEED_APPOINTMENTS: Appointment[] = [
     id: 'apt-2',
     client_id: 'client-1',
     date_time: '2025-06-25T11:00:00Z',
-    description: 'Simulacro personalizado de Entrevista Consular con el Lic. Valdez.',
+    description: 'Simulacro personalizado de Entrevista Consular con el Lic. Ronny Peña | ConsularVisa.',
     type: 'Entrevista Consular',
     location: 'Oficina Central Consularvisa Miami / Sala Virtual',
     status: 'Programada'
@@ -369,7 +357,7 @@ export const SEED_MESSAGES: Message[] = [
     id: 'msg-5',
     client_id: 'client-2',
     sender: 'client',
-    text: 'Muchas gracias Lic. Valdez. Ya lo descargué y realizaré el depósito bancario mañana mismo.',
+    text: 'Muchas gracias Lic. Ronny Peña | ConsularVisa. Ya lo descargué y realizaré el depósito bancario mañana mismo.',
     timestamp: '2025-05-14T10:15:00Z'
   },
   {

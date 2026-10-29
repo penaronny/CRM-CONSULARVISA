@@ -111,7 +111,7 @@ export const AdminProfileModal: React.FC<AdminProfileModalProps> = ({
       }
 
       await updateUser(activeUser.id, updates);
-      showToast('Su perfil de abogado ha sido actualizado exitosamente.', 'success');
+      showToast('Su perfil de Lic. Ronny Peña | ConsularVisa ha sido actualizado exitosamente.', 'success');
       await refreshData();
       onClose();
     } catch (err) {
@@ -133,7 +133,7 @@ export const AdminProfileModal: React.FC<AdminProfileModalProps> = ({
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold font-serif text-white">Mi Perfil de Abogado</h2>
+              <h2 className="text-base font-bold font-serif text-white">Mi Perfil: Lic. Ronny Peña | ConsularVisa</h2>
               <p className="text-xs text-slate-400">Configuración de cuenta y personalización</p>
             </div>
           </div>

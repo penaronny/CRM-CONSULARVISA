@@ -79,7 +79,7 @@ export const LoginView: React.FC = () => {
               Iniciar Sesión en su Cuenta
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">
-              Ingrese sus credenciales registradas como abogado o cliente
+              Ingrese sus credenciales de acceso (Lic. Ronny Peña | ConsularVisa o Cliente)
             </p>
           </div>
 

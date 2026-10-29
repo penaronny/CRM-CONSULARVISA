@@ -3,10 +3,10 @@
  * @description Mensajería directa del cliente con la oficina de Consularvisa (soporte legal).
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Message } from '../../types';
-import { getMessages, sendMessage } from '../../firebase/firestoreService';
+import { getMessages, sendMessage, subscribeToChanges } from '../../firebase/firestoreService';
 import { MessageSquare, Send, Scale, CheckCheck } from 'lucide-react';
 
 interface ClientChatProps {
@@ -18,13 +18,15 @@ export const ClientChat: React.FC<ClientChatProps> = ({ clientId }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newText, setNewText] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const loadChat = useCallback(async () => {
+    if (!clientId) return;
     try {
       const msgs = await getMessages(clientId);
       setMessages(msgs);
     } catch (err) {
-      console.error(err);
+      console.error('Error cargando mensajes del chat:', err);
     }
   }, [clientId]);
 
@@ -32,18 +34,44 @@ export const ClientChat: React.FC<ClientChatProps> = ({ clientId }) => {
     loadChat();
   }, [loadChat]);
 
+  // Sincronización en tiempo real reactiva
+  useEffect(() => {
+    const unsub = subscribeToChanges(() => {
+      loadChat();
+    });
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'consularvisa_messages_v1') {
+        loadChat();
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => {
+      unsub();
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, [loadChat]);
+
+  // Auto-scroll hacia el último mensaje recibido o enviado
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newText.trim() || isSending) return;
+    const cleanText = newText.trim();
+    if (!cleanText || isSending) return;
 
     setIsSending(true);
     try {
       const sent = await sendMessage({
         client_id: clientId,
         sender: 'client',
-        text: newText.trim()
+        text: cleanText
       });
-      setMessages(prev => [...prev, sent]);
+      setMessages(prev => {
+        if (prev.some(m => m.id === sent.id)) return prev;
+        return [...prev, sent];
+      });
       setNewText('');
     } catch (err) {
       console.error(err);
@@ -64,7 +92,7 @@ export const ClientChat: React.FC<ClientChatProps> = ({ clientId }) => {
           </div>
           <div>
             <h3 className="text-sm font-bold font-serif">Mesa de Soporte & Abogado Asignado</h3>
-            <p className="text-[11px] text-slate-300">Lic. Roberto Valdez & Equipo Consularvisa</p>
+            <p className="text-[11px] text-amber-300 font-medium">Lic. Ronny Peña | ConsularVisa</p>
           </div>
         </div>
         <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-semibold bg-emerald-950/60 border border-emerald-500/30 px-2.5 py-1 rounded-full">
@@ -80,7 +108,7 @@ export const ClientChat: React.FC<ClientChatProps> = ({ clientId }) => {
             <MessageSquare className="w-10 h-10 text-slate-300 mb-2" />
             <p className="font-semibold text-slate-700">Canal Seguro de Comunicación Legal</p>
             <p className="text-[11px] mt-1 max-w-xs">
-              Escriba sus dudas sobre formularios, citas o pagos directamente aquí. Su abogado le responderá a la brevedad.
+              Escriba sus dudas sobre formularios, citas o pagos directamente aquí. El Lic. Ronny Peña | ConsularVisa le responderá a la brevedad.
             </p>
           </div>
         ) : (
@@ -103,13 +131,14 @@ export const ClientChat: React.FC<ClientChatProps> = ({ clientId }) => {
                   <p className="leading-relaxed whitespace-pre-wrap">{m.text}</p>
                 </div>
                 <div className="flex items-center gap-1 text-[10px] text-slate-400 mt-1 px-1">
-                  <span>{isClient ? 'Tú' : 'Oficina Consularvisa'} • {timeStr}</span>
+                  <span>{isClient ? 'Tú' : 'Lic. Ronny Peña | ConsularVisa'} • {timeStr}</span>
                   {isClient && <CheckCheck className="w-3 h-3 text-amber-600" />}
                 </div>
               </div>
             );
           })
         )}
+        <div ref={messagesEndRef} />
       </div>
 
       {/* Input de Enviar */}

@@ -28,7 +28,7 @@ export const PatreonBanner: React.FC = () => {
           </h3>
 
           <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-            Accede a sesiones mensuales en vivo de preguntas y respuestas con nuestros abogados, revisión prioritaria de tus dudas de visado y nuestra biblioteca de cartas modelo de patrocinio.
+            Accede a sesiones mensuales en vivo de preguntas y respuestas con el Lic. Ronny Peña | ConsularVisa, revisión prioritaria de tus dudas de visado y nuestra biblioteca de cartas modelo de patrocinio.
           </p>
 
           {/* Lista de Beneficios */}
@@ -37,7 +37,7 @@ export const PatreonBanner: React.FC = () => {
               <span className="p-0.5 rounded-full bg-amber-500/20 text-amber-400 shrink-0">
                 <Check className="w-3.5 h-3.5" />
               </span>
-              <span>Webinar mensual con el Lic. Roberto Valdez</span>
+              <span>Webinar mensual con el Lic. Ronny Peña | ConsularVisa</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="p-0.5 rounded-full bg-amber-500/20 text-amber-400 shrink-0">

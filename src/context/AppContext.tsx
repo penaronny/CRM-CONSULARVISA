@@ -83,7 +83,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const savedSessionId = localStorage.getItem(SESSION_KEY);
       const targetUserId = savedSessionId || (activeUser ? activeUser.id : null);
       if (targetUserId) {
-        const found = u.find(item => item.id === targetUserId);
+        let found = u.find(item => item.id === targetUserId);
+        // Si el usuario guardado era un admin que ya no existe (ej. Roberto Valdez), cambiar automáticamente a law@ronnypena.com.do
+        if (!found) {
+          const ronny = u.find(item => item.email.toLowerCase() === 'law@ronnypena.com.do');
+          if (ronny) {
+            found = ronny;
+            localStorage.setItem(SESSION_KEY, ronny.id);
+          }
+        }
         if (found) {
           setActiveUserState(found);
           setIsAuthenticated(true);
@@ -162,7 +170,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (user.role === 'admin') {
       setActiveView('admin_dashboard');
       setSelectedClientId(null);
-      showToast(`Sesión cambiada a: ${user.name} (Modo Abogado/Admin)`, 'info');
+      showToast(`Sesión activa: ${user.name}`, 'info');
     } else {
       setActiveView('client_portal');
       setSelectedClientId(user.id);

@@ -63,7 +63,7 @@ export const ClientAppointments: React.FC<ClientAppointmentsProps> = ({ clientId
           <Calendar className="w-8 h-8 text-slate-300 mx-auto mb-2" />
           <p className="text-xs font-bold text-slate-700">Sin citas pendientes en este momento</p>
           <p className="text-xs text-slate-400 mt-0.5">
-            Su abogado le agendará las sesiones de preparación cuando su caso avance de etapa.
+            El Lic. Ronny Peña | ConsularVisa le agendará las sesiones de preparación cuando su caso avance de etapa.
           </p>
         </div>
       ) : (

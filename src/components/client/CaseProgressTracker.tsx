@@ -166,7 +166,7 @@ export const CaseProgressTracker: React.FC<CaseProgressTrackerProps> = ({
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-amber-400" />
               <span className="text-xs uppercase tracking-wider font-semibold text-amber-400">
-                Estado Actual Asignado por su Abogado
+                Estado Actual Asignado por Lic. Ronny Peña | ConsularVisa
               </span>
             </div>
             <p className="text-sm font-bold text-white">

@@ -118,7 +118,7 @@ export const DocumentVault: React.FC<DocumentVaultProps> = ({ clientId }) => {
         <form onSubmit={handleClientUpload} className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3 animate-fade-in">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-800">
-              Adjuntar Documento a su Abogado
+              Adjuntar Documento para Lic. Ronny Peña | ConsularVisa
             </span>
             <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
               Almacenamiento Seguro SSL
@@ -191,7 +191,7 @@ export const DocumentVault: React.FC<DocumentVaultProps> = ({ clientId }) => {
           <FolderLock className="w-10 h-10 text-slate-300 mx-auto mb-2" />
           <p className="text-xs font-bold text-slate-700">No hay documentos públicos por ahora</p>
           <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-            Su abogado publicará aquí las copias autorizadas y notificaciones de USCIS una vez aprobadas.
+            El Lic. Ronny Peña | ConsularVisa publicará aquí las copias autorizadas y notificaciones de USCIS una vez aprobadas.
           </p>
         </div>
       ) : (

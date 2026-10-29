@@ -5,6 +5,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
+import { User } from '../../types';
 import { QUICK_STATUS_OPTIONS } from '../../constants/caseStepsConfig';
 import { StatusBadge } from '../common/StatusBadge';
 import { formatUSD, calculatePendingBalance } from '../../utils/finance';
@@ -110,7 +111,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               Panel de Administración Consular
             </h1>
             <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-900 border border-blue-200">
-              Vista Abogado
+              Lic. Ronny Peña | ConsularVisa
             </span>
           </div>
           <p className="text-sm text-slate-500 mt-1">
