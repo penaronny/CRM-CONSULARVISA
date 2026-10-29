@@ -644,6 +644,7 @@ export async function sendMessage(messageData: Omit<Message, 'id' | 'timestamp'>
         body: JSON.stringify({
           client_id: cleanClientId,
           sender: messageData.sender,
+          subject: messageData.subject,
           text: messageData.text
         })
       });
@@ -673,6 +674,30 @@ export async function sendMessage(messageData: Omit<Message, 'id' | 'timestamp'>
   }
 
   return newMsg;
+}
+
+export async function markMessageAsRead(messageId: string): Promise<void> {
+  if (typeof window !== 'undefined' && typeof fetch !== 'undefined') {
+    try {
+      await fetch(`/api/messages/${encodeURIComponent(messageId)}/read`, { method: 'PUT' });
+    } catch { /* ignore */ }
+  }
+
+  const list = getLocalItem<Message[]>(STORAGE_KEYS.MESSAGES, SEED_MESSAGES);
+  const updated = list.map(m => m.id === messageId ? { ...m, read: true } : m);
+  setLocalItem(STORAGE_KEYS.MESSAGES, updated);
+}
+
+export async function deleteMessage(messageId: string): Promise<void> {
+  if (typeof window !== 'undefined' && typeof fetch !== 'undefined') {
+    try {
+      await fetch(`/api/messages/${encodeURIComponent(messageId)}`, { method: 'DELETE' });
+    } catch { /* ignore */ }
+  }
+
+  const list = getLocalItem<Message[]>(STORAGE_KEYS.MESSAGES, SEED_MESSAGES);
+  const updated = list.filter(m => m.id !== messageId);
+  setLocalItem(STORAGE_KEYS.MESSAGES, updated);
 }
 
 // Función para reiniciar datos a los valores semilla

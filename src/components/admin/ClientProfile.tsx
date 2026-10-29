@@ -53,6 +53,7 @@ import {
   Camera
 } from 'lucide-react';
 import { EditClientModal } from './EditClientModal';
+import { ClientMessagesInbox } from './ClientMessagesInbox';
 
 interface ClientProfileProps {
   clientId: string;
@@ -91,12 +92,6 @@ export const ClientProfile: React.FC<ClientProfileProps> = ({ clientId, onBack }
   const [aptDescription, setAptDescription] = useState('');
   const [aptLocation, setAptLocation] = useState('Videollamada Consularvisa');
 
-  // Mensajería Chat
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [newMsgText, setNewMsgText] = useState('');
-  const [isSendingMsg, setIsSendingMsg] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
   // Notas internas
   const [internalNotes, setInternalNotes] = useState(clientCase?.internal_notes || '');
   const [isSavingNotes, setIsSavingNotes] = useState(false);
@@ -105,14 +100,12 @@ export const ClientProfile: React.FC<ClientProfileProps> = ({ clientId, onBack }
   const loadClientDetails = useCallback(async () => {
     if (!clientId) return;
     try {
-      const [f, a, m] = await Promise.all([
+      const [f, a] = await Promise.all([
         getFiles(clientId, 'admin'), // Admin ve todos los archivos
-        getAppointments(clientId),
-        getMessages(clientId)
+        getAppointments(clientId)
       ]);
       setFiles(f);
       setAppointments(a);
-      setMessages(m);
     } catch (err) {
       console.error('Error loading client details:', err);
     }
@@ -170,11 +163,6 @@ export const ClientProfile: React.FC<ClientProfileProps> = ({ clientId, onBack }
       unsub();
     };
   }, [loadClientDetails]);
-
-  // Auto-scroll al último mensaje
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
 
   // Actualizar estados locales cuando cambie el cliente
   useEffect(() => {
@@ -317,42 +305,6 @@ export const ClientProfile: React.FC<ClientProfileProps> = ({ clientId, onBack }
       showToast('Cita cancelada', 'info');
     } catch (err) {
       console.error(err);
-    }
-  };
-
-  // Enviar mensaje en chat con actualización optimista inmediata
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanText = newMsgText.trim();
-    if (!cleanText || isSendingMsg) return;
-
-    setIsSendingMsg(true);
-    const tempId = `temp-${Date.now()}`;
-    const optimisticMsg: Message = {
-      id: tempId,
-      client_id: clientId,
-      sender: 'admin',
-      text: cleanText,
-      timestamp: new Date().toISOString()
-    };
-
-    // Actualización optimista instantánea en UI
-    setMessages(prev => [...prev, optimisticMsg]);
-    setNewMsgText('');
-
-    try {
-      const msg = await sendMessage({
-        client_id: clientId,
-        sender: 'admin',
-        text: cleanText
-      });
-      setMessages(prev => prev.map(m => m.id === tempId ? msg : m));
-    } catch (err) {
-      console.error(err);
-      showToast('Error al enviar mensaje', 'error');
-      setMessages(prev => prev.filter(m => m.id !== tempId));
-    } finally {
-      setIsSendingMsg(false);
     }
   };
 
@@ -1020,75 +972,8 @@ export const ClientProfile: React.FC<ClientProfileProps> = ({ clientId, onBack }
           </div>
         </div>
 
-        {/* 5. CHAT: INTERFAZ DE MENSAJERÍA DIRECTA CON EL CLIENTE */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col h-[420px]">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
-            <div className="flex items-center gap-2">
-              <div className="p-2 bg-indigo-50 text-indigo-700 rounded-xl">
-                <MessageSquare className="w-5 h-5" />
-              </div>
-              <div>
-                <h2 className="text-base font-bold text-slate-900">
-                  Chat Interno con {client.name.split(' ')[0]}
-                </h2>
-                <p className="text-xs text-slate-500">
-                  Comunicación directa reflejada en el portal del cliente
-                </p>
-              </div>
-            </div>
-            <span className="text-[10px] font-semibold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">
-              En Línea
-            </span>
-          </div>
-
-          {/* Historial de Mensajes */}
-          <div className="flex-1 overflow-y-auto py-3 space-y-3 pr-1 text-xs">
-            {messages.length === 0 ? (
-              <p className="text-slate-400 text-center py-8 italic">
-                Inicie la conversación con su cliente aquí.
-              </p>
-            ) : (
-              messages.map((msg) => {
-                const isAdmin = msg.sender === 'admin';
-                return (
-                  <div
-                    key={msg.id}
-                    className={`flex flex-col ${isAdmin ? 'items-end' : 'items-start'}`}
-                  >
-                    <div
-                      className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 shadow-2xs ${isAdmin ? 'bg-slate-900 text-white rounded-br-xs' : 'bg-slate-100 text-slate-800 rounded-bl-xs'}`}
-                    >
-                      <p className="leading-relaxed whitespace-pre-wrap">{msg.text}</p>
-                    </div>
-                    <span className="text-[10px] text-slate-400 mt-1 px-1">
-                      {isAdmin ? 'Lic. Ronny Peña | ConsularVisa' : (client?.name ? client.name.split(' ')[0] : 'Cliente')} • {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </div>
-                );
-              })
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Entrada de Nuevo Mensaje */}
-          <form onSubmit={handleSendMessage} className="pt-2 border-t border-slate-100 shrink-0 flex gap-2">
-            <input
-              type="text"
-              placeholder="Escriba un mensaje formal al cliente..."
-              value={newMsgText}
-              onChange={(e) => setNewMsgText(e.target.value)}
-              className="flex-1 text-xs px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-            />
-            <button
-              type="submit"
-              disabled={isSendingMsg || !newMsgText.trim()}
-              className="px-3.5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold flex items-center justify-center transition-colors disabled:opacity-50"
-            >
-              <Send className="w-3.5 h-3.5" />
-            </button>
-          </form>
-        </div>
-
+        {/* 5. BANDEJA DE MENSAJES Y COMUNICADOS OFICIALES */}
+        <ClientMessagesInbox client={client} />
       </div>
 
       {/* 6. NOTAS INTERNAS DEL ABOGADO */}

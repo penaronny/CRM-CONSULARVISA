@@ -329,42 +329,54 @@ export const SEED_MESSAGES: Message[] = [
     id: 'msg-1',
     client_id: 'client-1',
     sender: 'admin',
+    subject: 'Aprobación de Expediente I-130 en CEAC y Próximos Pasos',
     text: 'Estimado Carlos, buenas tardes. Le confirmamos que su expediente I-130 ya fue validado en CEAC. Estamos esperando la asignación de su cita en la embajada.',
-    timestamp: '2025-05-18T14:40:00Z'
+    timestamp: '2025-05-18T14:40:00Z',
+    read: true
   },
   {
     id: 'msg-2',
     client_id: 'client-1',
     sender: 'client',
+    subject: 'Consulta sobre Documentación Original para la Cita',
     text: '¡Excelente noticia Licenciado! ¿Tengo que llevar los originales de mis declaraciones de impuestos el día de la cita?',
-    timestamp: '2025-05-18T14:48:00Z'
+    timestamp: '2025-05-18T14:48:00Z',
+    read: true
   },
   {
     id: 'msg-3',
     client_id: 'client-1',
     sender: 'admin',
+    subject: 'Guía de Preparación de Entrevista y Checklist Oficial',
     text: 'Sí, exactamente. En la Bóveda Digital le hemos subido la "Guía de Preparación de Entrevista" con el checklist ordenado de lo que debe llevar en mano.',
-    timestamp: '2025-05-18T15:02:00Z'
+    timestamp: '2025-05-18T15:02:00Z',
+    read: false
   },
   {
     id: 'msg-4',
     client_id: 'client-2',
     sender: 'admin',
+    subject: 'Formulario DS-160 Finalizado - Comprobante Consular',
     text: 'Hola Elena, su formulario DS-160 está completado al 100%. Por favor revise la sección de Bóveda para descargar el comprobante de pago consular.',
-    timestamp: '2025-05-14T09:30:00Z'
+    timestamp: '2025-05-14T09:30:00Z',
+    read: true
   },
   {
     id: 'msg-5',
     client_id: 'client-2',
     sender: 'client',
+    subject: 'Confirmación de Depósito Bancario para Tasa Consular',
     text: 'Muchas gracias Lic. Ronny Peña | ConsularVisa. Ya lo descargué y realizaré el depósito bancario mañana mismo.',
-    timestamp: '2025-05-14T10:15:00Z'
+    timestamp: '2025-05-14T10:15:00Z',
+    read: true
   },
   {
     id: 'msg-6',
     client_id: 'client-3',
     sender: 'admin',
+    subject: 'Radicación Exitosa de Paquete I-485 en Lockbox Chicago',
     text: 'Roberto, hemos radicado su paquete I-485 con éxito. En cuanto recibamos la notificación formal de la cita de huellas se la publicaremos en su calendario.',
-    timestamp: '2025-05-10T12:00:00Z'
+    timestamp: '2025-05-10T12:00:00Z',
+    read: false
   }
 ];

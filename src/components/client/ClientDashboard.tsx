@@ -14,7 +14,7 @@ import { useApp } from '../../context/AppContext';
 import { CaseProgressTracker } from './CaseProgressTracker';
 import { DocumentVault } from './DocumentVault';
 import { ClientAppointments } from './ClientAppointments';
-import { ClientChat } from './ClientChat';
+import { ClientInbox } from './ClientInbox';
 import { PatreonBanner } from './PatreonBanner';
 import { formatUSD, getFinancialSummary } from '../../utils/finance';
 import { StatusBadge } from '../common/StatusBadge';
@@ -22,7 +22,8 @@ import { getMessages } from '../../firebase/firestoreService';
 import { 
   FolderLock, 
   Calendar, 
-  MessageSquare, 
+  Mail,
+  Inbox,
   TrendingUp, 
   DollarSign, 
   CheckCircle2, 
@@ -31,7 +32,6 @@ import {
   FileCheck2,
   Sparkles,
   Phone,
-  Mail,
   ShieldCheck,
   KeyRound
 } from 'lucide-react';
@@ -42,7 +42,7 @@ interface ClientDashboardProps {
 
 export const ClientDashboard: React.FC<ClientDashboardProps> = ({ clientId }) => {
   const { users, cases, changeActiveUserPassword } = useApp();
-  const [activeTab, setActiveTab] = useState<'overview' | 'vault' | 'appointments' | 'chat'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'vault' | 'appointments' | 'messages'>('overview');
   const [isSecurityModalOpen, setIsSecurityModalOpen] = useState(false);
   const [newPasswordInput, setNewPasswordInput] = useState('');
   const [isUpdatingPass, setIsUpdatingPass] = useState(false);
@@ -335,16 +335,16 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ clientId }) =>
         </button>
 
         <button
-          onClick={() => setActiveTab('chat')}
+          onClick={() => setActiveTab('messages')}
           className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all relative ${
-            activeTab === 'chat'
+            activeTab === 'messages'
               ? 'bg-white text-slate-900 shadow-xs'
               : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          <MessageSquare className="w-4 h-4 text-indigo-600" />
-          <span>Chat Legal</span>
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Canal activo" />
+          <Mail className="w-4 h-4 text-amber-600" />
+          <span>Bandeja de Mensajes</span>
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Canal oficial activo" />
         </button>
       </div>
 
@@ -363,33 +363,33 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ clientId }) =>
             </div>
           )}
 
-          {/* Tarjeta de Acceso Directo al Chat Legal con Lic. Ronny Peña */}
+          {/* Tarjeta de Acceso Directo a la Bandeja de Mensajes con Lic. Ronny Peña */}
           <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 text-white shadow-xs border border-indigo-900/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-start gap-3.5">
               <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0 mt-0.5">
-                <MessageSquare className="w-5 h-5" />
+                <Mail className="w-5 h-5" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm font-bold font-serif text-white">
-                    Canal Directo con Lic. Ronny Peña | ConsularVisa
+                    Bandeja de Entrada & Comunicados Legales
                   </h3>
                   <span className="text-[10px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full">
-                    Atención Activa
+                    Lic. Ronny Peña | ConsularVisa
                   </span>
                 </div>
                 <p className="text-xs text-slate-300 mt-1 line-clamp-1 max-w-xl">
-                  {latestAdminMsg ? `Último mensaje de la oficina: "${latestAdminMsg}"` : 'Escriba sus dudas legales directamente al abogado aquí en cualquier momento.'}
+                  {latestAdminMsg ? `Último comunicado: "${latestAdminMsg}"` : 'Revise los comunicados oficiales o redacte un mensaje a la oficina.'}
                 </p>
               </div>
             </div>
 
             <button
-              onClick={() => setActiveTab('chat')}
+              onClick={() => setActiveTab('messages')}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition-colors shadow-xs shrink-0 cursor-pointer"
             >
-              <MessageSquare className="w-3.5 h-3.5" />
-              <span>Abrir Chat Legal</span>
+              <Inbox className="w-3.5 h-3.5" />
+              <span>Ver Bandeja de Mensajes</span>
             </button>
           </div>
 
@@ -418,9 +418,9 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ clientId }) =>
         </div>
       )}
 
-      {activeTab === 'chat' && (
+      {activeTab === 'messages' && (
         <div className="space-y-6">
-          <ClientChat clientId={client.id} />
+          <ClientInbox clientId={client.id} />
           <PatreonBanner />
         </div>
       )}

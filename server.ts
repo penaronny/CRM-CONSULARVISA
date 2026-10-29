@@ -116,7 +116,7 @@ async function startServer() {
   });
 
   app.post('/api/messages', (req: Request, res: Response) => {
-    const { client_id, sender, text } = req.body;
+    const { client_id, sender, text, subject } = req.body;
     if (!client_id || !text || !sender) {
       res.status(400).json({ error: 'client_id, sender and text are required' });
       return;
@@ -127,13 +127,32 @@ async function startServer() {
       id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       client_id: cleanClientId,
       sender: sender === 'client' ? ('client' as const) : ('admin' as const),
+      subject: subject && String(subject).trim() ? String(subject).trim() : (sender === 'admin' ? 'Comunicado Oficial de la Firma' : 'Consulta Legal del Cliente'),
       text: String(text).trim(),
+      read: false,
       timestamp: new Date().toISOString(),
     };
 
     dbState.messages.push(newMsg);
     saveDatabase(dbState);
     res.status(201).json(newMsg);
+  });
+
+  app.put('/api/messages/:id/read', (req: Request, res: Response) => {
+    const { id } = req.params;
+    const msg = dbState.messages.find(m => m.id === id);
+    if (msg) {
+      msg.read = true;
+      saveDatabase(dbState);
+    }
+    res.json({ success: true, message: msg });
+  });
+
+  app.delete('/api/messages/:id', (req: Request, res: Response) => {
+    const { id } = req.params;
+    dbState.messages = dbState.messages.filter(m => m.id !== id);
+    saveDatabase(dbState);
+    res.json({ success: true });
   });
 
   // -------------------------------------------------------------------------

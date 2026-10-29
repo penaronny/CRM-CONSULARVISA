@@ -77,6 +77,8 @@ export interface Message {
   sender: 'admin' | 'client';
   text: string;
   timestamp: string; // ISO 8601 string
+  subject?: string; // Asunto formal del mensaje/comunicado
+  read?: boolean; // Estado de lectura
 }
 
 /**
