@@ -1,0 +1,6 @@
+{
+  "name": "Consularvisa - CRM & Portal de Inmigración",
+  "description": "Sistema integral de CRM y Portal de Clientes para la firma de abogados Consularvisa con seguimiento de casos USCIS/NVC, bóveda digital y gestión financiera.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
