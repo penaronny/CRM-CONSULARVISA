@@ -79,18 +79,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setUsers(u);
       setCases(c);
 
-      // Verificar si hay sesión guardada en localStorage
+      // Verificar si hay sesión guardada en localStorage o activa en memoria
       const savedSessionId = localStorage.getItem(SESSION_KEY);
-      if (savedSessionId) {
-        const found = u.find(item => item.id === savedSessionId);
+      const targetUserId = savedSessionId || (activeUser ? activeUser.id : null);
+      if (targetUserId) {
+        const found = u.find(item => item.id === targetUserId);
         if (found) {
           setActiveUserState(found);
           setIsAuthenticated(true);
           if (found.role === 'client') {
             setActiveView('client_portal');
             setSelectedClientId(found.id);
-          } else {
-            setActiveView('admin_dashboard');
           }
         }
       }

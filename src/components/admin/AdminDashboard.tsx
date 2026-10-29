@@ -22,8 +22,10 @@ import {
   Clock,
   Sparkles,
   Phone,
-  Mail
+  Mail,
+  Edit3
 } from 'lucide-react';
+import { EditClientModal } from './EditClientModal';
 
 interface AdminDashboardProps {
   onSelectClient: (clientId: string) => void;
@@ -38,6 +40,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [updatingCaseId, setUpdatingCaseId] = useState<string | null>(null);
+  const [editingClient, setEditingClient] = useState<User | null>(null);
 
   const clients = useMemo(() => users.filter(u => u.role === 'client'), [users]);
 
@@ -406,15 +409,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </div>
                       </td>
 
-                      {/* Acción Ver Perfil */}
-                      <td className="py-4 px-5 text-right">
-                        <button
-                          onClick={() => onSelectClient(client.id)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-xs hover:shadow transition-all group-hover:bg-amber-600"
-                        >
-                          <span>Ver Perfil</span>
-                          <ArrowUpRight className="w-3.5 h-3.5" />
-                        </button>
+                      {/* Acciones: Editar & Ver Perfil */}
+                      <td className="py-4 px-5 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setEditingClient(client)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-semibold shadow-2xs transition-all cursor-pointer"
+                            title="Editar información, país, foto y expediente de este cliente"
+                          >
+                            <Edit3 className="w-3.5 h-3.5 text-amber-700" />
+                            <span className="hidden sm:inline">Editar</span>
+                          </button>
+
+                          <button
+                            onClick={() => onSelectClient(client.id)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-xs hover:shadow transition-all group-hover:bg-amber-600 cursor-pointer"
+                          >
+                            <span>Ver Perfil</span>
+                            <ArrowUpRight className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -425,6 +440,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
 
       </div>
+
+      {/* Modal para Editar Cliente seleccionado desde la tabla */}
+      <EditClientModal
+        isOpen={!!editingClient}
+        onClose={() => setEditingClient(null)}
+        client={editingClient}
+        clientCase={editingClient ? caseByClientId.get(editingClient.id) || null : null}
+      />
 
     </div>
   );

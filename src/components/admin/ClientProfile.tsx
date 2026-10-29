@@ -47,8 +47,11 @@ import {
   Plus, 
   MapPin, 
   UserCheck, 
-  ExternalLink 
+  ExternalLink,
+  Edit3,
+  Camera
 } from 'lucide-react';
+import { EditClientModal } from './EditClientModal';
 
 interface ClientProfileProps {
   clientId: string;
@@ -64,6 +67,7 @@ export const ClientProfile: React.FC<ClientProfileProps> = ({ clientId, onBack }
   // Estados locales para formularios y datos relacionados
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   // Estados de finanzas editables
   const [totalCostInput, setTotalCostInput] = useState<number>(client?.total_cost || 0);
@@ -307,26 +311,38 @@ export const ClientProfile: React.FC<ClientProfileProps> = ({ clientId, onBack }
           <div className="flex items-center gap-4">
             <button
               onClick={onBack}
-              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
               title="Volver al listado de clientes"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
 
-            <div className="flex items-center gap-3">
-              {client.avatar_url ? (
-                <img
-                  src={client.avatar_url}
-                  alt={client.name}
-                  className="w-13 h-13 rounded-2xl object-cover border-2 border-amber-500/30 shadow-xs"
-                />
-              ) : (
-                <div className="w-13 h-13 rounded-2xl bg-amber-500/20 text-amber-800 flex items-center justify-center font-bold text-xl">
-                  {client.name.charAt(0)}
-                </div>
-              )}
+            <div className="flex items-center gap-3.5">
+              {/* Avatar con botón de cámara para cambiar foto o editar */}
+              <div className="relative group shrink-0">
+                {client.avatar_url ? (
+                  <img
+                    src={client.avatar_url}
+                    alt={client.name}
+                    className="w-14 h-14 rounded-2xl object-cover border-2 border-amber-500/40 shadow-xs"
+                  />
+                ) : (
+                  <div className="w-14 h-14 rounded-2xl bg-amber-500/20 text-amber-800 flex items-center justify-center font-bold text-xl border border-amber-300">
+                    {client.name.charAt(0)}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(true)}
+                  className="absolute -bottom-1 -right-1 p-1 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg shadow-sm transition-transform hover:scale-110 cursor-pointer"
+                  title="Cambiar foto o editar información del cliente"
+                >
+                  <Camera className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <h1 className="text-xl font-bold text-slate-900 font-serif">
                     {client.name}
                   </h1>
@@ -335,6 +351,15 @@ export const ClientProfile: React.FC<ClientProfileProps> = ({ clientId, onBack }
                       {client.country_of_origin}
                     </span>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => setIsEditModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-semibold text-xs transition-colors cursor-pointer"
+                    title="Editar datos del cliente, país de origen, credenciales y foto"
+                  >
+                    <Edit3 className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Editar Perfil</span>
+                  </button>
                 </div>
                 <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 mt-1">
                   <span>{client.email}</span>
@@ -1022,6 +1047,14 @@ export const ClientProfile: React.FC<ClientProfileProps> = ({ clientId, onBack }
           />
         </div>
       )}
+
+      {/* Modal para Editar Perfil del Cliente */}
+      <EditClientModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        client={client}
+        clientCase={clientCase || null}
+      />
 
     </div>
   );
