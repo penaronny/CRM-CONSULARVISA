@@ -1,6 +1,6 @@
 /**
  * @file src/context/AppContext.tsx
- * @description Contexto global reactivo para la gestión de usuarios, casos y sincronización de datos.
+ * @description Contexto global reactivo para la gestión de usuarios, casos, autenticación y sincronización de datos.
  */
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
@@ -12,8 +12,12 @@ import {
   subscribeToChanges, 
   updateCase, 
   updateUser,
+  loginUser,
+  updateUserPassword,
   resetDatabaseToSeed 
 } from '../firebase/firestoreService';
+
+const SESSION_KEY = 'consularvisa_active_session_v1';
 
 interface Toast {
   id: string;
@@ -24,16 +28,20 @@ interface Toast {
 interface AppContextType {
   users: User[];
   cases: Case[];
-  activeUser: User;
+  activeUser: User | null;
+  isAuthenticated: boolean;
   selectedClientId: string | null;
   activeView: 'admin_dashboard' | 'client_profile' | 'client_portal' | 'architecture_guide';
   isLoading: boolean;
   toasts: Toast[];
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  logout: () => void;
   setActiveUser: (user: User) => void;
   setSelectedClientId: (clientId: string | null) => void;
   setActiveView: (view: 'admin_dashboard' | 'client_profile' | 'client_portal' | 'architecture_guide') => void;
   quickUpdateCaseStatus: (caseId: string, newStatus: string) => Promise<void>;
   updateClientFinancials: (clientId: string, totalCost: number, amountPaid: number) => Promise<void>;
+  changeActiveUserPassword: (newPassword: string) => Promise<boolean>;
   showToast: (message: string, type?: 'success' | 'info' | 'warning' | 'error') => void;
   removeToast: (id: string) => void;
   resetAllData: () => void;
@@ -46,6 +54,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [users, setUsers] = useState<User[]>([]);
   const [cases, setCases] = useState<Case[]>([]);
   const [activeUser, setActiveUserState] = useState<User | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<'admin_dashboard' | 'client_profile' | 'client_portal' | 'architecture_guide'>('admin_dashboard');
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -70,16 +79,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setUsers(u);
       setCases(c);
 
-      // Si no hay usuario activo, seleccionar por defecto el admin
-      setActiveUserState(prev => {
-        if (prev) {
-          // Mantener sincronizado el usuario activo con sus datos más recientes
-          const fresh = u.find(item => item.id === prev.id);
-          return fresh || prev;
+      // Verificar si hay sesión guardada en localStorage
+      const savedSessionId = localStorage.getItem(SESSION_KEY);
+      if (savedSessionId) {
+        const found = u.find(item => item.id === savedSessionId);
+        if (found) {
+          setActiveUserState(found);
+          setIsAuthenticated(true);
+          if (found.role === 'client') {
+            setActiveView('client_portal');
+            setSelectedClientId(found.id);
+          } else {
+            setActiveView('admin_dashboard');
+          }
         }
-        const admin = u.find(item => item.role === 'admin') || u[0];
-        return admin || null;
-      });
+      }
     } catch (err) {
       console.error('Error refreshing data:', err);
     } finally {
@@ -98,8 +112,54 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
   }, [refreshData]);
 
+  // Función de Login Estricto
+  const login = useCallback(async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    setIsLoading(true);
+    try {
+      const { user, error } = await loginUser(email, password);
+      if (error || !user) {
+        showToast(error || 'Credenciales inválidas', 'error');
+        return { success: false, error: error || 'Credenciales inválidas' };
+      }
+
+      setActiveUserState(user);
+      setIsAuthenticated(true);
+      localStorage.setItem(SESSION_KEY, user.id);
+
+      if (user.role === 'admin') {
+        setActiveView('admin_dashboard');
+        setSelectedClientId(null);
+        showToast(`Bienvenido al Sistema de Gestión, ${user.name}`, 'success');
+      } else {
+        setActiveView('client_portal');
+        setSelectedClientId(user.id);
+        showToast(`Bienvenido a su Portal del Cliente, ${user.name}`, 'success');
+      }
+
+      return { success: true };
+    } catch (err) {
+      console.error(err);
+      showToast('Ocurrió un error al procesar el inicio de sesión', 'error');
+      return { success: false, error: 'Error del servidor' };
+    } finally {
+      setIsLoading(false);
+    }
+  }, [showToast]);
+
+  // Cierre de Sesión
+  const logout = useCallback(() => {
+    localStorage.removeItem(SESSION_KEY);
+    setActiveUserState(null);
+    setIsAuthenticated(false);
+    setSelectedClientId(null);
+    setActiveView('admin_dashboard');
+    showToast('Sesión finalizada con éxito. Hasta pronto.', 'info');
+  }, [showToast]);
+
   const setActiveUser = useCallback((user: User) => {
     setActiveUserState(user);
+    setIsAuthenticated(true);
+    localStorage.setItem(SESSION_KEY, user.id);
     if (user.role === 'admin') {
       setActiveView('admin_dashboard');
       setSelectedClientId(null);
@@ -138,38 +198,49 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   }, [showToast, refreshData]);
 
+  // Cambio de contraseña del usuario activo
+  const changeActiveUserPassword = useCallback(async (newPassword: string): Promise<boolean> => {
+    if (!activeUser) return false;
+    try {
+      await updateUserPassword(activeUser.id, newPassword);
+      showToast('Contraseña actualizada con éxito', 'success');
+      await refreshData();
+      return true;
+    } catch (err) {
+      console.error(err);
+      showToast('Error al actualizar contraseña', 'error');
+      return false;
+    }
+  }, [activeUser, showToast, refreshData]);
+
   const resetAllData = useCallback(() => {
     resetDatabaseToSeed();
+    localStorage.removeItem(SESSION_KEY);
+    setIsAuthenticated(false);
+    setActiveUserState(null);
     showToast('Datos restablecidos a la configuración inicial de prueba', 'info');
     refreshData();
   }, [showToast, refreshData]);
-
-  // Fallback seguro si activeUser aún no ha cargado
-  const resolvedActiveUser: User = activeUser || {
-    id: 'admin-1',
-    name: 'Lic. Roberto Valdez (Abogado Principal)',
-    role: 'admin',
-    email: 'abogado@consularvisa.com',
-    phone: '+1 (305) 555-0199',
-    total_cost: 0,
-    amount_paid: 0
-  };
 
   return (
     <AppContext.Provider
       value={{
         users,
         cases,
-        activeUser: resolvedActiveUser,
+        activeUser,
+        isAuthenticated,
         selectedClientId,
         activeView,
         isLoading,
         toasts,
+        login,
+        logout,
         setActiveUser,
         setSelectedClientId,
         setActiveView,
         quickUpdateCaseStatus,
         updateClientFinancials,
+        changeActiveUserPassword,
         showToast,
         removeToast,
         resetAllData,

@@ -18,6 +18,7 @@ export interface User {
   role: UserRole;
   email: string;
   phone: string;
+  portal_password?: string; // Contraseña de acceso al portal de Consularvisa
   uscis_email?: string;
   uscis_password?: string;
   total_cost: number;

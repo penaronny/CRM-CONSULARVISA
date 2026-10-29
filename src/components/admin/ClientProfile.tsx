@@ -460,6 +460,42 @@ export const ClientProfile: React.FC<ClientProfileProps> = ({ clientId, onBack }
                 </div>
               </div>
             )}
+
+            {/* Credenciales de Acceso al Portal del Cliente */}
+            <div className="mt-3 p-3 rounded-xl bg-amber-50/70 border border-amber-200/80 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-amber-950 uppercase tracking-wide">
+                  Acceso al Portal del Cliente (App Móvil)
+                </span>
+                <span className="text-[10px] text-amber-800 font-semibold">Credenciales Activas</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                <div>
+                  <span className="text-slate-500 text-[10px] block">Usuario:</span>
+                  <span className="font-mono font-semibold text-slate-800 break-all">{client.email}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 text-[10px] block">Clave del Portal:</span>
+                  <span className="font-mono font-bold text-amber-900 bg-white px-1.5 py-0.5 rounded border border-amber-300">
+                    {client.portal_password || 'Consular2025*Pass'}
+                  </span>
+                </div>
+              </div>
+              <div className="pt-1 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const text = `Consularvisa Portal: Ingrese en ${window.location.origin} con Usuario: ${client.email} y Contraseña: ${client.portal_password || 'Consular2025*Pass'}`;
+                    navigator.clipboard.writeText(text);
+                    showToast('Credenciales del portal copiadas', 'info');
+                  }}
+                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-900 hover:text-amber-950 bg-white px-2 py-1 rounded border border-amber-300 hover:bg-amber-50 transition-colors"
+                >
+                  <Copy className="w-3 h-3 text-amber-700" />
+                  <span>Copiar Acceso</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 

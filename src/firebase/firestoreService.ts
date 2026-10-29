@@ -85,7 +85,17 @@ function notifyListeners() {
 
 // Inicialización de datos semilla si no existen
 export function initializeDatabase() {
-  getLocalItem(STORAGE_KEYS.USERS, SEED_USERS);
+  const existingUsers = getLocalItem<User[]>(STORAGE_KEYS.USERS, SEED_USERS);
+  // Asegurar que usuarios existentes en localStorage tengan contraseña de portal
+  const syncedUsers = existingUsers.map(u => {
+    if (!u.portal_password) {
+      const match = SEED_USERS.find(su => su.id === u.id || su.email === u.email);
+      return { ...u, portal_password: match?.portal_password || 'Consular2025*Pass' };
+    }
+    return u;
+  });
+  setLocalItem(STORAGE_KEYS.USERS, syncedUsers);
+
   getLocalItem(STORAGE_KEYS.CASES, SEED_CASES);
   getLocalItem(STORAGE_KEYS.FILES, SEED_FILES);
   getLocalItem(STORAGE_KEYS.APPOINTMENTS, SEED_APPOINTMENTS);
@@ -93,7 +103,7 @@ export function initializeDatabase() {
 }
 
 // ---------------------------------------------------------------------------
-// 1. USUARIOS (USERS)
+// 1. USUARIOS (USERS) & AUTENTICACIÓN
 // ---------------------------------------------------------------------------
 export async function getUsers(): Promise<User[]> {
   if (isLiveFirebaseConfigured && db) {
@@ -110,6 +120,30 @@ export async function getUsers(): Promise<User[]> {
 export async function getUserById(userId: string): Promise<User | null> {
   const users = await getUsers();
   return users.find(u => u.id === userId) || null;
+}
+
+export async function loginUser(email: string, password: string): Promise<{ user: User | null; error?: string }> {
+  const cleanEmail = email.trim().toLowerCase();
+  const cleanPassword = password.trim();
+
+  const users = await getUsers();
+  const user = users.find(u => u.email.toLowerCase() === cleanEmail);
+
+  if (!user) {
+    return { user: null, error: 'No se encontró ninguna cuenta registrada con este correo electrónico.' };
+  }
+
+  // Verificar contraseña
+  const validPassword = user.portal_password || 'Consular2025*Pass';
+  if (user.portal_password && user.portal_password !== cleanPassword) {
+    return { user: null, error: 'Contraseña incorrecta. Por favor verifique sus credenciales.' };
+  }
+
+  return { user, error: undefined };
+}
+
+export async function updateUserPassword(userId: string, newPassword: string): Promise<void> {
+  await updateUser(userId, { portal_password: newPassword.trim() });
 }
 
 export async function updateUser(userId: string, updates: Partial<User>): Promise<void> {
