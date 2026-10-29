@@ -86,14 +86,26 @@ function notifyListeners() {
 // Inicialización de datos semilla si no existen
 export function initializeDatabase() {
   const existingUsers = getLocalItem<User[]>(STORAGE_KEYS.USERS, SEED_USERS);
-  // Asegurar que usuarios existentes en localStorage tengan contraseña de portal
-  const syncedUsers = existingUsers.map(u => {
-    if (!u.portal_password) {
-      const match = SEED_USERS.find(su => su.id === u.id || su.email === u.email);
-      return { ...u, portal_password: match?.portal_password || 'Consular2025*Pass' };
+  
+  // Asegurar que usuarios existentes en localStorage tengan contraseña de portal y se sincronicen nuevos administradores
+  const existingMap = new Map(existingUsers.map(u => [u.email.toLowerCase(), u]));
+
+  // Agregar o actualizar usuarios semilla (garantiza que nuevos administradores existan de inmediato)
+  SEED_USERS.forEach(su => {
+    const existing = existingMap.get(su.email.toLowerCase());
+    if (existing) {
+      existingMap.set(su.email.toLowerCase(), {
+        ...existing,
+        name: su.name || existing.name,
+        role: su.role,
+        portal_password: su.portal_password || existing.portal_password || 'Consular2025*Pass'
+      });
+    } else {
+      existingMap.set(su.email.toLowerCase(), su);
     }
-    return u;
   });
+
+  const syncedUsers = Array.from(existingMap.values());
   setLocalItem(STORAGE_KEYS.USERS, syncedUsers);
 
   getLocalItem(STORAGE_KEYS.CASES, SEED_CASES);

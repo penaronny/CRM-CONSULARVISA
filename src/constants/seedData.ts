@@ -7,6 +7,18 @@ import { User, Case, FileItem, Appointment, Message } from '../types';
 
 export const SEED_USERS: User[] = [
   {
+    id: 'admin-ronny',
+    name: 'Lic. Ronny Peña (Abogado Director)',
+    role: 'admin',
+    email: 'law@ronnypena.com.do',
+    portal_password: 'Escaflowne@23@',
+    phone: '+1 (809) 555-0100',
+    total_cost: 0,
+    amount_paid: 0,
+    avatar_url: 'https://images.unsplash.com/photo-1556157382-97eda2d62296?w=160&auto=format&fit=crop&q=80',
+    created_at: '2024-01-01T08:00:00Z'
+  },
+  {
     id: 'admin-1',
     name: 'Lic. Roberto Valdez (Abogado Principal)',
     role: 'admin',
