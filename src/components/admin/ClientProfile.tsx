@@ -120,22 +120,54 @@ export const ClientProfile: React.FC<ClientProfileProps> = ({ clientId, onBack }
 
   useEffect(() => {
     loadClientDetails();
-  }, [loadClientDetails]);
 
-  // Sincronización reactiva del chat y datos
-  useEffect(() => {
-    const unsub = subscribeToChanges(() => {
+    // 1. Polling cada 1.5 segundos para sincronizar con incógnito y otros navegadores
+    const pollInterval = setInterval(() => {
       loadClientDetails();
-    });
+    }, 1500);
+
+    // 2. BroadcastChannel para sincronización instantánea entre pestañas
+    const channel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('consularvisa_sync_bus') : null;
+    if (channel) {
+      channel.onmessage = () => {
+        loadClientDetails();
+      };
+    }
+
+    // 3. StorageEvent
     const handleStorage = (e: StorageEvent) => {
-      if (e.key === 'consularvisa_messages_v1') {
+      if (!e.key || e.key === 'consularvisa_messages_v1') {
         loadClientDetails();
       }
     };
     window.addEventListener('storage', handleStorage);
+
+    // 4. Custom event
+    const handleLocal = () => loadClientDetails();
+    window.addEventListener('consularvisa_local_update', handleLocal);
+
+    // 5. Visibilidad y foco
+    const handleFocus = () => {
+      if (document.visibilityState === 'visible') {
+        loadClientDetails();
+      }
+    };
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleFocus);
+
+    // 6. Suscripción en memoria
+    const unsub = subscribeToChanges(() => {
+      loadClientDetails();
+    });
+
     return () => {
-      unsub();
+      clearInterval(pollInterval);
+      channel?.close();
       window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('consularvisa_local_update', handleLocal);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleFocus);
+      unsub();
     };
   }, [loadClientDetails]);
 
@@ -288,27 +320,37 @@ export const ClientProfile: React.FC<ClientProfileProps> = ({ clientId, onBack }
     }
   };
 
-  // Enviar mensaje en chat
+  // Enviar mensaje en chat con actualización optimista inmediata
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanText = newMsgText.trim();
     if (!cleanText || isSendingMsg) return;
 
     setIsSendingMsg(true);
+    const tempId = `temp-${Date.now()}`;
+    const optimisticMsg: Message = {
+      id: tempId,
+      client_id: clientId,
+      sender: 'admin',
+      text: cleanText,
+      timestamp: new Date().toISOString()
+    };
+
+    // Actualización optimista instantánea en UI
+    setMessages(prev => [...prev, optimisticMsg]);
+    setNewMsgText('');
+
     try {
       const msg = await sendMessage({
         client_id: clientId,
         sender: 'admin',
         text: cleanText
       });
-      setMessages(prev => {
-        if (prev.some(m => m.id === msg.id)) return prev;
-        return [...prev, msg];
-      });
-      setNewMsgText('');
+      setMessages(prev => prev.map(m => m.id === tempId ? msg : m));
     } catch (err) {
       console.error(err);
       showToast('Error al enviar mensaje', 'error');
+      setMessages(prev => prev.filter(m => m.id !== tempId));
     } finally {
       setIsSendingMsg(false);
     }

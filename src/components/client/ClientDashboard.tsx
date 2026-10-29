@@ -9,7 +9,7 @@
  * 6. Banner promocional del Club VIP de Patreon
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { CaseProgressTracker } from './CaseProgressTracker';
 import { DocumentVault } from './DocumentVault';
@@ -18,6 +18,7 @@ import { ClientChat } from './ClientChat';
 import { PatreonBanner } from './PatreonBanner';
 import { formatUSD, getFinancialSummary } from '../../utils/finance';
 import { StatusBadge } from '../common/StatusBadge';
+import { getMessages } from '../../firebase/firestoreService';
 import { 
   FolderLock, 
   Calendar, 
@@ -45,9 +46,30 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ clientId }) =>
   const [isSecurityModalOpen, setIsSecurityModalOpen] = useState(false);
   const [newPasswordInput, setNewPasswordInput] = useState('');
   const [isUpdatingPass, setIsUpdatingPass] = useState(false);
+  const [latestAdminMsg, setLatestAdminMsg] = useState<string | null>(null);
 
   const client = users.find(u => u.id === clientId);
   const clientCase = cases.find(c => c.client_id === clientId);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchLatest = async () => {
+      if (!clientId) return;
+      try {
+        const msgs = await getMessages(clientId);
+        const adminMsgs = msgs.filter(m => m.sender === 'admin');
+        if (isMounted && adminMsgs.length > 0) {
+          setLatestAdminMsg(adminMsgs[adminMsgs.length - 1].text);
+        }
+      } catch { /* ignore */ }
+    };
+    fetchLatest();
+    const interval = setInterval(fetchLatest, 2000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [clientId]);
 
   if (!client) {
     return (
@@ -314,7 +336,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ clientId }) =>
 
         <button
           onClick={() => setActiveTab('chat')}
-          className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all ${
+          className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all relative ${
             activeTab === 'chat'
               ? 'bg-white text-slate-900 shadow-xs'
               : 'text-slate-600 hover:text-slate-900'
@@ -322,6 +344,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ clientId }) =>
         >
           <MessageSquare className="w-4 h-4 text-indigo-600" />
           <span>Chat Legal</span>
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Canal activo" />
         </button>
       </div>
 
@@ -339,6 +362,36 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ clientId }) =>
               No hay caso registrado actualmente.
             </div>
           )}
+
+          {/* Tarjeta de Acceso Directo al Chat Legal con Lic. Ronny Peña */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 text-white shadow-xs border border-indigo-900/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0 mt-0.5">
+                <MessageSquare className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold font-serif text-white">
+                    Canal Directo con Lic. Ronny Peña | ConsularVisa
+                  </h3>
+                  <span className="text-[10px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+                    Atención Activa
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 mt-1 line-clamp-1 max-w-xl">
+                  {latestAdminMsg ? `Último mensaje de la oficina: "${latestAdminMsg}"` : 'Escriba sus dudas legales directamente al abogado aquí en cualquier momento.'}
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setActiveTab('chat')}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition-colors shadow-xs shrink-0 cursor-pointer"
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
+              <span>Abrir Chat Legal</span>
+            </button>
+          </div>
 
           {/* Banner Promocional del Club VIP de Patreon */}
           <PatreonBanner />
