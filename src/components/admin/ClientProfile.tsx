@@ -50,8 +50,12 @@ import {
   UserCheck, 
   ExternalLink,
   Edit3,
-  Camera
+  Camera,
+  Download,
+  Paperclip,
+  X
 } from 'lucide-react';
+import { downloadFile } from '../../utils/fileDownload';
 import { EditClientModal } from './EditClientModal';
 import { ClientMessagesInbox } from './ClientMessagesInbox';
 
@@ -82,6 +86,10 @@ export const ClientProfile: React.FC<ClientProfileProps> = ({ clientId, onBack }
   const [newFileName, setNewFileName] = useState('');
   const [newFileCategory, setNewFileCategory] = useState<'Identificación' | 'Formularios' | 'Evidencias' | 'Notificaciones USCIS' | 'Otros'>('Formularios');
   const [newFileVisibility, setNewFileVisibility] = useState(true);
+  const [selectedAdminFile, setSelectedAdminFile] = useState<File | null>(null);
+  const [adminFileBase64, setAdminFileBase64] = useState<string>('');
+  const adminFileInputRef = useRef<HTMLInputElement>(null);
+  const [previewModalFile, setPreviewModalFile] = useState<FileItem | null>(null);
 
   // Citas
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -232,24 +240,34 @@ export const ClientProfile: React.FC<ClientProfileProps> = ({ clientId, onBack }
   // Subir documento
   const handleUploadFile = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newFileName.trim()) return;
+    if (!newFileName.trim() && !selectedAdminFile) return;
 
     try {
+      const sanitizedName = newFileName.trim() || selectedAdminFile?.name || 'Documento_Oficial.pdf';
+      const sizeStr = selectedAdminFile
+        ? (selectedAdminFile.size > 1024 * 1024 
+            ? `${(selectedAdminFile.size / (1024 * 1024)).toFixed(1)} MB` 
+            : `${Math.round(selectedAdminFile.size / 1024)} KB`)
+        : '1.2 MB';
+
       const created = await uploadFile({
         client_id: client.id,
-        file_name: newFileName.trim().endsWith('.pdf') ? newFileName.trim() : `${newFileName.trim()}.pdf`,
-        file_url: 'https://example.com/vault/' + encodeURIComponent(newFileName.trim()),
-        file_size: `${(Math.random() * 2 + 0.5).toFixed(1)} MB`,
+        file_name: sanitizedName,
+        file_url: `/uploads/${encodeURIComponent(sanitizedName)}`,
+        file_size: sizeStr,
         category: newFileCategory,
         uploaded_by: 'admin',
         uploaded_at: new Date().toISOString(),
-        visible_to_client: newFileVisibility
+        visible_to_client: newFileVisibility,
+        file_data: adminFileBase64 || undefined
       });
 
-      setFiles(prev => [created, ...prev]);
+      setFiles(prev => [created, ...prev.filter(f => f.id !== created.id)]);
       setNewFileName('');
+      setSelectedAdminFile(null);
+      setAdminFileBase64('');
       setIsUploadingFile(false);
-      showToast('Documento subido y registrado exitosamente', 'success');
+      showToast('Documento subido y registrado exitosamente en la nube', 'success');
     } catch (err) {
       console.error(err);
       showToast('Error al subir documento', 'error');
@@ -668,15 +686,54 @@ export const ClientProfile: React.FC<ClientProfileProps> = ({ clientId, onBack }
 
         {/* Formulario Desplegable para Subir Documentos */}
         {isUploadingFile && (
-          <form onSubmit={handleUploadFile} className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
-            <p className="text-xs font-bold text-slate-800">Cargar nuevo archivo al expediente</p>
+          <form onSubmit={handleUploadFile} className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3 animate-fade-in">
+            <p className="text-xs font-bold text-slate-800 flex items-center gap-2">
+              <Paperclip className="w-4 h-4 text-amber-600" />
+              Cargar nuevo archivo al expediente del cliente
+            </p>
+
+            {/* Input de archivo real */}
+            <div>
+              <input
+                type="file"
+                ref={adminFileInputRef}
+                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setSelectedAdminFile(file);
+                  setNewFileName(file.name);
+                  const reader = new FileReader();
+                  reader.onload = () => setAdminFileBase64(reader.result as string);
+                  reader.readAsDataURL(file);
+                }}
+              />
+              <div 
+                onClick={() => adminFileInputRef.current?.click()}
+                className="border-2 border-dashed border-slate-300 hover:border-amber-500 rounded-xl p-3 text-center cursor-pointer bg-white transition-colors"
+              >
+                {selectedAdminFile ? (
+                  <div className="flex items-center justify-center gap-2 text-xs font-semibold text-slate-800">
+                    <FileText className="w-4 h-4 text-amber-600" />
+                    <span>{selectedAdminFile.name} ({(selectedAdminFile.size / (1024 * 1024)).toFixed(2)} MB)</span>
+                    <span className="text-amber-700 underline text-[11px] ml-2">Cambiar archivo</span>
+                  </div>
+                ) : (
+                  <div className="text-xs text-slate-500">
+                    <span className="font-semibold text-slate-800 underline">Seleccione un archivo</span> de su computadora (PDF, Imagen, Word)
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label className="text-xs text-slate-600 font-semibold block mb-1">Nombre del Archivo</label>
+                <label className="text-xs text-slate-600 font-semibold block mb-1">Nombre o Descripción</label>
                 <input
                   type="text"
                   required
-                  placeholder="ej. Formulario_I-130_Firmado.pdf"
+                  placeholder="ej. Notificacion_I797C_Aprobacion.pdf"
                   value={newFileName}
                   onChange={(e) => setNewFileName(e.target.value)}
                   className="w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
@@ -717,16 +774,20 @@ export const ClientProfile: React.FC<ClientProfileProps> = ({ clientId, onBack }
             <div className="flex justify-end gap-2 pt-2">
               <button
                 type="button"
-                onClick={() => setIsUploadingFile(false)}
-                className="px-3 py-1.5 text-xs text-slate-600 hover:text-slate-800"
+                onClick={() => {
+                  setIsUploadingFile(false);
+                  setSelectedAdminFile(null);
+                  setAdminFileBase64('');
+                }}
+                className="px-3 py-1.5 text-xs text-slate-600 hover:text-slate-800 cursor-pointer"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
-                className="px-4 py-1.5 text-xs bg-slate-900 text-white font-semibold rounded-lg hover:bg-slate-800"
+                className="px-4 py-1.5 text-xs bg-slate-900 text-white font-semibold rounded-lg hover:bg-slate-800 cursor-pointer"
               >
-                Confirmar y Subir a Storage
+                Confirmar y Subir a Bóveda
               </button>
             </div>
           </form>
@@ -746,7 +807,7 @@ export const ClientProfile: React.FC<ClientProfileProps> = ({ clientId, onBack }
                     <span>Visibilidad al Cliente (Switch)</span>
                   </div>
                 </th>
-                <th className="py-2.5 px-3 text-right">Acción</th>
+                <th className="py-2.5 px-3 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -806,13 +867,35 @@ export const ClientProfile: React.FC<ClientProfileProps> = ({ clientId, onBack }
                     </td>
 
                     <td className="py-3 px-3 text-right">
-                      <button
-                        onClick={() => handleDeleteFile(file.id)}
-                        className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                        title="Eliminar archivo"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setPreviewModalFile(file)}
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+                          title="Ver documento"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            downloadFile(file);
+                            showToast(`Descargando copia segura: ${file.file_name}`, 'info');
+                          }}
+                          className="p-1.5 rounded-lg text-amber-700 hover:text-amber-900 hover:bg-amber-50 transition-colors cursor-pointer"
+                          title="Descargar archivo"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteFile(file.id)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                          title="Eliminar archivo del expediente"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -1011,6 +1094,78 @@ export const ClientProfile: React.FC<ClientProfileProps> = ({ clientId, onBack }
         client={client}
         clientCase={clientCase || null}
       />
+
+      {/* Modal de Previsualización de Documentos para el Abogado */}
+      {previewModalFile && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden animate-fade-in">
+            <div className="px-5 py-3.5 bg-slate-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2 min-w-0">
+                <FileText className="w-4 h-4 text-amber-400 shrink-0" />
+                <span className="text-xs font-bold truncate">{previewModalFile.file_name}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewModalFile(null)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 flex-1 overflow-y-auto space-y-4">
+              {previewModalFile.file_data && previewModalFile.file_data.startsWith('data:image/') ? (
+                <img 
+                  src={previewModalFile.file_data} 
+                  alt={previewModalFile.file_name}
+                  className="max-h-[60vh] max-w-full mx-auto rounded-lg object-contain shadow-xs" 
+                />
+              ) : previewModalFile.file_data && previewModalFile.file_data.startsWith('data:application/pdf') ? (
+                <iframe
+                  src={previewModalFile.file_data}
+                  title={previewModalFile.file_name}
+                  className="w-full h-[55vh] rounded-lg border border-slate-200"
+                />
+              ) : (
+                <div className="p-8 text-center bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                  <FileText className="w-12 h-12 text-amber-600 mx-auto" />
+                  <h4 className="text-sm font-bold text-slate-900">{previewModalFile.file_name}</h4>
+                  <p className="text-xs text-slate-500 max-w-md mx-auto">
+                    Documento del expediente oficial bajo la categoría <strong>{previewModalFile.category || 'Expediente'}</strong>.
+                  </p>
+                  <p className="text-[11px] text-slate-400">
+                    Subido por: {previewModalFile.uploaded_by === 'admin' ? 'Lic. Ronny Peña | ConsularVisa' : client.name} • Tamaño: {previewModalFile.file_size || '1.2 MB'}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="px-5 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+              <span className="text-[11px] text-slate-500">Expediente Oficial Consularvisa</span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPreviewModalFile(null)}
+                  className="px-3 py-1.5 text-xs text-slate-600 hover:text-slate-800 cursor-pointer"
+                >
+                  Cerrar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    downloadFile(previewModalFile);
+                    showToast(`Descargando copia segura: ${previewModalFile.file_name}`, 'info');
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-900 text-white rounded-xl text-xs font-semibold hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Descargar Archivo</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

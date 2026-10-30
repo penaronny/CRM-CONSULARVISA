@@ -1,0 +1,112 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Perfil de usuario (Abogado administrador o Cliente de inmigración)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "client"] },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "portal_password": { "type": "string" },
+        "uscis_email": { "type": "string" },
+        "uscis_password": { "type": "string" },
+        "total_cost": { "type": "number" },
+        "amount_paid": { "type": "number" },
+        "avatar_url": { "type": "string" },
+        "country_of_origin": { "type": "string" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["id", "name", "role", "email"]
+    },
+    "Case": {
+      "title": "Case",
+      "description": "Expediente del caso migratorio en USCIS / NVC",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "client_id": { "type": "string" },
+        "case_type": { "type": "string" },
+        "case_number": { "type": "string" },
+        "current_status": { "type": "string" },
+        "last_updated": { "type": "string" },
+        "internal_notes": { "type": "string" },
+        "priority_date": { "type": "string" },
+        "petitioner_name": { "type": "string" },
+        "beneficiary_name": { "type": "string" }
+      },
+      "required": ["id", "client_id", "case_type", "current_status"]
+    },
+    "FileItem": {
+      "title": "FileItem",
+      "description": "Documentos oficiales y evidencias en la bóveda digital",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "client_id": { "type": "string" },
+        "file_name": { "type": "string" },
+        "file_url": { "type": "string" },
+        "file_size": { "type": "string" },
+        "category": { "type": "string" },
+        "uploaded_by": { "type": "string", "enum": ["admin", "client"] },
+        "uploaded_at": { "type": "string" },
+        "visible_to_client": { "type": "boolean" }
+      },
+      "required": ["id", "client_id", "file_name", "file_url", "uploaded_by", "visible_to_client"]
+    },
+    "Appointment": {
+      "title": "Appointment",
+      "description": "Citas programadas para asesorías, toma de huellas o entrevista consular",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "client_id": { "type": "string" },
+        "date_time": { "type": "string" },
+        "description": { "type": "string" },
+        "location": { "type": "string" },
+        "type": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "client_id", "date_time", "description"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "Mensajes y comunicados oficiales en la bandeja de entrada",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "client_id": { "type": "string" },
+        "sender": { "type": "string", "enum": ["admin", "client"] },
+        "subject": { "type": "string" },
+        "text": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "read": { "type": "boolean" }
+      },
+      "required": ["id", "client_id", "sender", "text", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Colección de perfiles de usuarios y clientes"
+    },
+    "/cases/{caseId}": {
+      "schema": { "$ref": "#/entities/Case" },
+      "description": "Colección de expedientes migratorios"
+    },
+    "/files/{fileId}": {
+      "schema": { "$ref": "#/entities/FileItem" },
+      "description": "Bóveda digital de documentos con visibilidad controlada"
+    },
+    "/appointments/{appointmentId}": {
+      "schema": { "$ref": "#/entities/Appointment" },
+      "description": "Calendario de citas y audiencias"
+    },
+    "/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/Message" },
+      "description": "Bandeja de mensajes y comunicados formales"
+    }
+  }
+}

@@ -1,23 +1,27 @@
 /**
  * @file src/components/client/DocumentVault.tsx
- * @description Bóveda Digital del Cliente con filtrado estricto `visible_to_client === true`
- * y capacidad para subir documentos civiles o probatorios directamente a Firebase Storage.
+ * @description Bóveda Digital del Cliente con filtrado estricto `visible_to_client === true`,
+ * carga real de archivos (PDF, imágenes, Word) con sincronización en la nube y visor seguro.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { FileItem } from '../../types';
-import { getFiles, uploadFile } from '../../firebase/firestoreService';
+import { getFiles, uploadFile, subscribeToChanges } from '../../firebase/firestoreService';
+import { downloadFile } from '../../utils/fileDownload';
 import { 
   FolderLock, 
   FileText, 
   Download, 
   Upload, 
   ShieldCheck, 
-  Plus, 
   CheckCircle2, 
+  Eye, 
+  X,
   FileCheck,
-  AlertCircle
+  AlertCircle,
+  Paperclip,
+  Image as ImageIcon
 } from 'lucide-react';
 
 interface DocumentVaultProps {
@@ -26,12 +30,21 @@ interface DocumentVaultProps {
 
 export const DocumentVault: React.FC<DocumentVaultProps> = ({ clientId }) => {
   const { showToast } = useApp();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [files, setFiles] = useState<FileItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+
+  // Estados de archivo a subir
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [fileBase64, setFileBase64] = useState<string>('');
   const [uploadFileName, setUploadFileName] = useState('');
   const [uploadCategory, setUploadCategory] = useState<'Identificación' | 'Formularios' | 'Evidencias' | 'Notificaciones USCIS' | 'Otros'>('Identificación');
   const [isUploading, setIsUploading] = useState(false);
+
+  // Modal de previsualización
+  const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
 
   // Carga con rol 'client': filtrará automáticamente visible_to_client === true
   const loadVaultFiles = useCallback(async () => {
@@ -49,37 +62,71 @@ export const DocumentVault: React.FC<DocumentVaultProps> = ({ clientId }) => {
 
   useEffect(() => {
     loadVaultFiles();
+    const unsub = subscribeToChanges(() => {
+      loadVaultFiles();
+    });
+    return () => unsub();
   }, [loadVaultFiles]);
 
-  // Manejo de subida de archivos por el cliente
+  // Manejo de selección de archivo en disco
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 25 * 1024 * 1024) {
+      showToast('El archivo excede el límite permitido de 25 MB', 'error');
+      return;
+    }
+
+    setSelectedFile(file);
+    setUploadFileName(file.name);
+
+    // Leer como Base64 Data URL
+    const reader = new FileReader();
+    reader.onload = () => {
+      setFileBase64(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Manejo de subida a la nube
   const handleClientUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!uploadFileName.trim()) return;
+    if (!selectedFile && !uploadFileName.trim()) {
+      showToast('Por favor seleccione un archivo para subir', 'error');
+      return;
+    }
 
     setIsUploading(true);
     try {
-      const sanitizedName = uploadFileName.trim().endsWith('.pdf') 
-        ? uploadFileName.trim() 
-        : `${uploadFileName.trim()}.pdf`;
+      const sanitizedName = uploadFileName.trim() || selectedFile?.name || 'Documento_Civil.pdf';
+      const sizeStr = selectedFile 
+        ? (selectedFile.size > 1024 * 1024 
+            ? `${(selectedFile.size / (1024 * 1024)).toFixed(1)} MB` 
+            : `${Math.round(selectedFile.size / 1024)} KB`)
+        : '1.2 MB';
 
-      const newFile = await uploadFile({
+      const created = await uploadFile({
         client_id: clientId,
         file_name: sanitizedName,
-        file_url: 'https://example.com/client-upload/' + encodeURIComponent(sanitizedName),
-        file_size: `${(Math.random() * 3 + 1).toFixed(1)} MB`,
+        file_url: `/uploads/${encodeURIComponent(sanitizedName)}`,
+        file_size: sizeStr,
         category: uploadCategory,
         uploaded_by: 'client',
         uploaded_at: new Date().toISOString(),
-        visible_to_client: true // Los documentos que sube el cliente siempre son visibles para él
+        visible_to_client: true,
+        file_data: fileBase64 || undefined
       });
 
-      setFiles(prev => [newFile, ...prev]);
+      setFiles(prev => [created, ...prev.filter(f => f.id !== created.id)]);
+      setSelectedFile(null);
+      setFileBase64('');
       setUploadFileName('');
       setIsUploadOpen(false);
-      showToast('Documento subido a Firebase Storage con éxito', 'success');
+      showToast('Documento radicado y guardado en la bóveda con éxito', 'success');
     } catch (err) {
       console.error(err);
-      showToast('Error al subir documento', 'error');
+      showToast('Error al subir el documento', 'error');
     } finally {
       setIsUploading(false);
     }
@@ -105,30 +152,79 @@ export const DocumentVault: React.FC<DocumentVaultProps> = ({ clientId }) => {
         </div>
 
         <button
-          onClick={() => setIsUploadOpen(!isUploadOpen)}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs shadow-md transition-colors self-start sm:self-auto"
+          type="button"
+          onClick={() => {
+            setIsUploadOpen(!isUploadOpen);
+            setSelectedFile(null);
+            setFileBase64('');
+            setUploadFileName('');
+          }}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs shadow-md transition-colors self-start sm:self-auto cursor-pointer"
         >
           <Upload className="w-4 h-4 text-amber-400" />
           <span>Subir Documento</span>
         </button>
       </div>
 
-      {/* Modal / Formulario para que el Cliente Suba Documentos */}
+      {/* Formulario para que el Cliente Suba Documentos Reales */}
       {isUploadOpen && (
-        <form onSubmit={handleClientUpload} className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3 animate-fade-in">
+        <form onSubmit={handleClientUpload} className="p-4 sm:p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-4 animate-fade-in">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-800">
-              Adjuntar Documento para Lic. Ronny Peña | ConsularVisa
+            <span className="text-xs font-bold text-slate-900 flex items-center gap-2">
+              <Paperclip className="w-4 h-4 text-amber-600" />
+              Adjuntar Archivo para Lic. Ronny Peña | ConsularVisa
             </span>
             <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-              Almacenamiento Seguro SSL
+              Cifrado Seguro SSL
             </span>
+          </div>
+
+          {/* Selector de Archivo de Computadora */}
+          <div>
+            <label className="text-xs font-semibold text-slate-700 block mb-1.5">
+              Seleccionar Archivo de su Computadora o Dispositivo *
+            </label>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+              className="hidden"
+            />
+            
+            <div 
+              onClick={() => fileInputRef.current?.click()}
+              className="border-2 border-dashed border-slate-300 hover:border-amber-500 rounded-xl p-4 text-center cursor-pointer bg-white transition-colors"
+            >
+              {selectedFile ? (
+                <div className="flex items-center justify-center gap-3 text-slate-800">
+                  <FileCheck className="w-6 h-6 text-emerald-600 shrink-0" />
+                  <div className="text-left">
+                    <p className="text-xs font-bold text-slate-900">{selectedFile.name}</p>
+                    <p className="text-[11px] text-slate-500">
+                      {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB • {selectedFile.type || 'Documento'}
+                    </p>
+                  </div>
+                  <span className="text-xs text-amber-600 font-semibold underline ml-2">Cambiar</span>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <Upload className="w-6 h-6 text-slate-400 mx-auto" />
+                  <p className="text-xs font-semibold text-slate-700">
+                    Haga clic aquí para examinar archivos en su computadora
+                  </p>
+                  <p className="text-[10px] text-slate-400">
+                    Formatos admitidos: PDF, JPG, PNG, DOCX (máx. 25 MB)
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold text-slate-600 block mb-1">
-                Nombre o Descripción del Documento *
+                Descripción o Nombre en Bóveda *
               </label>
               <input
                 type="text"
@@ -142,7 +238,7 @@ export const DocumentVault: React.FC<DocumentVaultProps> = ({ clientId }) => {
 
             <div>
               <label className="text-xs font-semibold text-slate-600 block mb-1">
-                Tipo de Evidencia
+                Categoría de Evidencia
               </label>
               <select
                 value={uploadCategory}
@@ -152,31 +248,28 @@ export const DocumentVault: React.FC<DocumentVaultProps> = ({ clientId }) => {
                 <option value="Identificación">Identificación (Pasaporte, DNI, Licencia)</option>
                 <option value="Evidencias">Pruebas / Solvencia Económica / Cartas</option>
                 <option value="Formularios">Formulario Firmado</option>
+                <option value="Notificaciones USCIS">Notificaciones Recibidas</option>
                 <option value="Otros">Otros Documentos</option>
               </select>
             </div>
           </div>
 
-          <div className="flex items-center justify-between pt-1">
-            <p className="text-[11px] text-slate-500">
-              Formatos soportados: PDF, JPG, PNG (máx. 25 MB).
-            </p>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setIsUploadOpen(false)}
-                className="px-3 py-1.5 text-xs text-slate-600 hover:text-slate-800"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={isUploading}
-                className="px-4 py-1.5 text-xs bg-slate-900 text-white font-semibold rounded-xl hover:bg-slate-800 transition-colors"
-              >
-                {isUploading ? 'Subiendo...' : 'Cargar Documento'}
-              </button>
-            </div>
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
+            <button
+              type="button"
+              onClick={() => setIsUploadOpen(false)}
+              className="px-3.5 py-1.5 text-xs text-slate-600 hover:text-slate-800 cursor-pointer"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={isUploading || (!selectedFile && !uploadFileName.trim())}
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              <Upload className="w-3.5 h-3.5 text-amber-400" />
+              <span>{isUploading ? 'Guardando en la Nube...' : 'Cargar a la Bóveda Segura'}</span>
+            </button>
           </div>
         </form>
       )}
@@ -184,7 +277,7 @@ export const DocumentVault: React.FC<DocumentVaultProps> = ({ clientId }) => {
       {/* Lista de Documentos Disponibles para el Cliente */}
       {isLoading ? (
         <div className="py-8 text-center text-slate-400 text-xs">
-          Cargando documentos verificados...
+          Cargando documentos verificados de la nube...
         </div>
       ) : files.length === 0 ? (
         <div className="py-10 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
@@ -225,25 +318,105 @@ export const DocumentVault: React.FC<DocumentVaultProps> = ({ clientId }) => {
                   {new Date(file.uploaded_at).toLocaleDateString()}
                 </span>
                 
-                <a
-                  href={file.file_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-amber-800 hover:text-amber-950"
-                  onClick={(e) => {
-                    // Simulación segura si es url demo
-                    if (file.file_url.startsWith('#') || file.file_url.includes('example.com')) {
-                      e.preventDefault();
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPreviewFile(file)}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-slate-600 hover:text-slate-900 cursor-pointer"
+                    title="Ver documento"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>Ver</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      downloadFile(file);
                       showToast(`Descargando copia segura: ${file.file_name}`, 'info');
-                    }
-                  }}
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Descargar</span>
-                </a>
+                    }}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 hover:text-amber-900 cursor-pointer"
+                    title="Descargar a su computadora"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Descargar</span>
+                  </button>
+                </div>
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Modal de Previsualización de Documento */}
+      {previewFile && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden animate-fade-in">
+            <div className="px-5 py-3.5 bg-slate-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2 min-w-0">
+                <FileText className="w-4 h-4 text-amber-400 shrink-0" />
+                <span className="text-xs font-bold truncate">{previewFile.file_name}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewFile(null)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 flex-1 overflow-y-auto space-y-4">
+              {previewFile.file_data && previewFile.file_data.startsWith('data:image/') ? (
+                <img 
+                  src={previewFile.file_data} 
+                  alt={previewFile.file_name}
+                  className="max-h-[60vh] max-w-full mx-auto rounded-lg object-contain shadow-xs" 
+                />
+              ) : previewFile.file_data && previewFile.file_data.startsWith('data:application/pdf') ? (
+                <iframe
+                  src={previewFile.file_data}
+                  title={previewFile.file_name}
+                  className="w-full h-[55vh] rounded-lg border border-slate-200"
+                />
+              ) : (
+                <div className="p-8 text-center bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                  <FileText className="w-12 h-12 text-amber-600 mx-auto" />
+                  <h4 className="text-sm font-bold text-slate-900">{previewFile.file_name}</h4>
+                  <p className="text-xs text-slate-500 max-w-md mx-auto">
+                    Documento certificado radicado en la bóveda de Consularvisa bajo la categoría <strong>{previewFile.category || 'Expediente'}</strong>.
+                  </p>
+                  <p className="text-[11px] text-slate-400">
+                    Tamaño: {previewFile.file_size || '1.2 MB'} • Fecha: {new Date(previewFile.uploaded_at).toLocaleDateString()}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="px-5 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+              <span className="text-[11px] text-slate-500">Expediente Oficial Consularvisa</span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPreviewFile(null)}
+                  className="px-3 py-1.5 text-xs text-slate-600 hover:text-slate-800 cursor-pointer"
+                >
+                  Cerrar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    downloadFile(previewFile);
+                    showToast(`Descargando copia segura: ${previewFile.file_name}`, 'info');
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-900 text-white rounded-xl text-xs font-semibold hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Descargar Archivo</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

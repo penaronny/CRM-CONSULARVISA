@@ -150,6 +150,18 @@
   ],
   "files": [
     {
+      "id": "file-1793367770916-k29w",
+      "client_id": "client-1",
+      "file_name": "Prueba_Carga_Boveda.pdf",
+      "file_url": "/uploads/1793367770916-Prueba_Carga_Boveda.pdf",
+      "file_size": "0 KB",
+      "category": "Evidencias",
+      "uploaded_by": "client",
+      "uploaded_at": "2026-10-30T13:42:50.916Z",
+      "visible_to_client": true,
+      "file_data": "data:application/pdf;base64,JVBERi0xLjQKJcTl8uXrCjEgMCBvYmoKPDwKL1R5cGUgL0NhdGFsb2cKL1BhZ2VzIDIgMCBSCj4+CmVuZG9iago="
+    },
+    {
       "id": "file-1",
       "client_id": "client-1",
       "file_name": "I-797C_Aprobacion_USCIS.pdf",
@@ -365,6 +377,15 @@
       "sender": "client",
       "text": "Entendido Lic. Ronny Peña, muchas gracias por el aviso.",
       "timestamp": "2026-10-29T20:13:23.852Z"
+    },
+    {
+      "id": "msg-1793367762960-q40ry",
+      "client_id": "client-1",
+      "sender": "admin",
+      "subject": "Bienvenido al Sistema de Comunicados Oficiales",
+      "text": "Estimado Carlos, a través de esta bandeja de entrada recibirá todas las notificaciones oficiales de su expediente migratorio.",
+      "read": false,
+      "timestamp": "2026-10-30T13:42:42.960Z"
     }
   ]
 }

@@ -1,6 +1,6 @@
 {
-  "summary":  "Plan de implementación para la pantalla de inicio de sesión (Login) con autenticación estricta y el generador automático de credenciales con opciones de copiado y compartición (WhatsApp/Email) al registrar nuevos clientes en Consularvisa.",
-  "updatedAt":  "2026-10-29T17:48:13.521820875Z",
+  "summary":  "Plan de implementación arquitectónica para activar Firebase Firestore en la nube, sincronización multi-dispositivo en tiempo real para bandeja de mensajes, finanzas, citas y almacenamiento persistente en la bóveda digital de Consularvisa.",
+  "updatedAt":  "2026-10-30T13:32:13.961116548Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

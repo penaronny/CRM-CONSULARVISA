@@ -59,6 +59,7 @@ export interface FileItem {
   uploaded_by: 'admin' | 'client';
   uploaded_at: string;
   visible_to_client: boolean; // TRUE: cliente lo ve; FALSE: solo uso interno del abogado
+  file_data?: string; // Data URL en Base64 para visualización y descarga directa en cualquier dispositivo
 }
 
 export interface Appointment {

@@ -84,7 +84,13 @@ async function startServer() {
   const app = express();
   const PORT = parseInt(process.env.PORT || '3000', 10);
 
-  app.use(express.json({ limit: '15mb' }));
+  const UPLOADS_DIR = path.resolve(DATA_DIR, 'uploads');
+  if (!fs.existsSync(UPLOADS_DIR)) {
+    fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+  }
+
+  app.use(express.json({ limit: '50mb' }));
+  app.use('/uploads', express.static(UPLOADS_DIR));
 
   // Middleware CORS y cabeceras anti-cache para endpoints de API
   app.use('/api', (req, res, next) => {
@@ -256,6 +262,54 @@ async function startServer() {
     dbState.files.unshift(newFile);
     saveDatabase(dbState);
     res.status(201).json(newFile);
+  });
+
+  app.post('/api/upload', (req: Request, res: Response) => {
+    try {
+      const { fileName, fileData, clientId, category, visibleToClient, uploadedBy } = req.body;
+      if (!fileName || !fileData) {
+        res.status(400).json({ error: 'fileName and fileData are required' });
+        return;
+      }
+
+      // Guardar archivo en disco para persistencia full-stack
+      const cleanFileName = String(fileName).replace(/[^a-zA-Z0-9._-]/g, '_');
+      const uniqueName = `${Date.now()}-${cleanFileName}`;
+      const destPath = path.resolve(UPLOADS_DIR, uniqueName);
+
+      const base64Content = fileData.includes(';base64,')
+        ? fileData.split(';base64,')[1]
+        : fileData;
+
+      const fileBuffer = Buffer.from(base64Content, 'base64');
+      fs.writeFileSync(destPath, fileBuffer);
+
+      const bytes = fileBuffer.length;
+      const sizeStr = bytes > 1024 * 1024 
+        ? `${(bytes / (1024 * 1024)).toFixed(1)} MB` 
+        : `${Math.round(bytes / 1024)} KB`;
+
+      const newId = `file-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+      const savedFile = {
+        id: newId,
+        client_id: clientId || 'general',
+        file_name: fileName,
+        file_url: `/uploads/${uniqueName}`,
+        file_size: sizeStr,
+        category: category || 'Otros',
+        uploaded_by: uploadedBy === 'admin' ? ('admin' as const) : ('client' as const),
+        uploaded_at: new Date().toISOString(),
+        visible_to_client: visibleToClient !== undefined ? Boolean(visibleToClient) : true,
+        file_data: fileData // Retener base64 para preview instantáneo
+      };
+
+      dbState.files.unshift(savedFile);
+      saveDatabase(dbState);
+      res.status(201).json(savedFile);
+    } catch (err: any) {
+      console.error('Error saving uploaded file:', err);
+      res.status(500).json({ error: 'Error processing file upload' });
+    }
   });
 
   app.put('/api/files/:id', (req: Request, res: Response) => {
